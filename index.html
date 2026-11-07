@@ -93,12 +93,30 @@
     }
     .canvas-wrap {
       position: relative;
-      width: min(768px, calc(100vw - 48px));
+      width: min(960px, calc(100vw - 32px), calc((100vh - 160px) * 4 / 3));
       aspect-ratio: 4 / 3;
       background: #000;
       border-radius: 6px;
       overflow: hidden;
       border: 2px solid #000;
+    }
+    .cabinet:fullscreen,
+    .cabinet:-webkit-full-screen {
+      width: 100vw;
+      height: 100vh;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      background: #000;
+      justify-content: center;
+      align-items: center;
+    }
+    .cabinet:fullscreen .canvas-wrap,
+    .cabinet:-webkit-full-screen .canvas-wrap {
+      width: min(100vw, calc(100vh * 4 / 3));
+      height: min(100vh, calc(100vw * 3 / 4));
+      border: none;
+      border-radius: 0;
     }
     canvas#game-canvas {
       width: 100%;
