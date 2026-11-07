@@ -1,0 +1,6 @@
+*.bmp
+*.o
+super_leo_bros
+super_leo_bros.js
+super_leo_bros.wasm
+dist/

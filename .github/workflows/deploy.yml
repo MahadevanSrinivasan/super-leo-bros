@@ -1,0 +1,38 @@
+name: Build Wasm & Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.64
+
+      - name: Compile C99 to WebAssembly (.wasm)
+        run: |
+          mkdir -p dist
+          emcc -O2 super_leo_bros.c -o dist/super_leo_bros.js \
+            -s EXPORTED_FUNCTIONS='["_wasm_init","_wasm_step_frame","_wasm_get_fb","_wasm_set_key"]' \
+            -s EXPORTED_RUNTIME_METHODS='["HEAPU8"]' \
+            -lm
+          cp index.html dist/index.html
+          touch dist/.nojekyll
+
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          force_orphan: true

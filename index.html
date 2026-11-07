@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Super Leo Bros. — Classic 2D Platformer (WebAssembly)</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --border: #30363d;
+      --accent: #f7c948;
+      --red: #dc281e;
+      --text: #e6edf3;
+      --muted: #8b949e;
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      background: radial-gradient(circle at top, #1b2436 0%, var(--bg) 70%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 780px;
+      margin-bottom: 12px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+      text-shadow: 0 2px 0 #7a3408;
+    }
+    .badge {
+      background: #21262d;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    button.btn, a.btn {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    button.btn:hover, a.btn:hover {
+      background: #21262d;
+      border-color: var(--accent);
+    }
+    .cabinet {
+      background: #11161f;
+      border: 3px solid #2b3340;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.65);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 100%;
+    }
+    .canvas-wrap {
+      position: relative;
+      width: min(768px, calc(100vw - 48px));
+      aspect-ratio: 4 / 3;
+      background: #000;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid #000;
+    }
+    canvas#game-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    #loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(13, 17, 23, 0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-size: 0.95rem;
+      color: var(--accent);
+      z-index: 5;
+    }
+    .touch-controls {
+      display: none;
+      width: 100%;
+      max-width: 768px;
+      margin-top: 14px;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      touch-action: none;
+    }
+    @media (pointer: coarse), (max-width: 760px) {
+      .touch-controls {
+        display: flex;
+      }
+    }
+    .dpad, .ab-pad {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .tbtn {
+      width: 54px;
+      height: 54px;
+      border-radius: 12px;
+      background: #21262d;
+      border: 2px solid #3b434d;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+    }
+    .tbtn:active, .tbtn.active {
+      background: var(--red);
+      border-color: var(--accent);
+      transform: scale(0.96);
+    }
+    .tbtn.jump {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #b91c1c;
+    }
+    .tbtn.run {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: #ca8a04;
+    }
+    .controls-card {
+      width: 100%;
+      max-width: 780px;
+      margin-top: 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 8px 18px;
+    }
+    .controls-card strong {
+      color: var(--text);
+    }
+    kbd {
+      background: #21262d;
+      border: 1px solid #3b434d;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 0.78rem;
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>SUPER LEO BROS.</h1>
+      <span class="badge">C99 &rarr; WebAssembly</span>
+    </div>
+    <div class="toolbar">
+      <a class="btn" href="https://theshybulb.com/projects/">&larr; The Shy Bulb</a>
+      <button class="btn" id="mute-btn" type="button">Sound: ON</button>
+      <button class="btn" id="fs-btn" type="button">Fullscreen</button>
+      <a class="btn" href="https://github.com/MahadevanSrinivasan/super-leo-bros" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </header>
+
+  <div class="cabinet" id="cabinet">
+    <div class="canvas-wrap">
+      <canvas id="game-canvas" width="320" height="240"></canvas>
+      <div id="loading-overlay">Loading WebAssembly module...</div>
+    </div>
+
+    <div class="touch-controls">
+      <div class="dpad">
+        <button class="tbtn" data-k="1" aria-label="Left">&larr;</button>
+        <button class="tbtn" data-k="3" aria-label="Crouch / Pipe">&darr;</button>
+        <button class="tbtn" data-k="2" aria-label="Right">&rarr;</button>
+      </div>
+      <button class="tbtn" data-k="15" style="width:72px;height:40px;font-size:0.75rem;">START</button>
+      <div class="ab-pad">
+        <button class="tbtn run" data-k="6">RUN<br>FIRE</button>
+        <button class="tbtn jump" data-k="5">JUMP</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls-card">
+    <div><strong>Move:</strong> <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd></div>
+    <div><strong>Jump (Hold for higher):</strong> <kbd>Space</kbd>, <kbd>X</kbd>, <kbd>&uarr;</kbd>, or <kbd>W</kbd></div>
+    <div><strong>Sprint &amp; Fireballs:</strong> Hold <kbd>Z</kbd> or <kbd>Shift</kbd></div>
+    <div><strong>Crouch / Secret Pipe:</strong> <kbd>&darr;</kbd> or <kbd>S</kbd> (4th pipe in 1-1!)</div>
+    <div><strong>Stage Select (Title):</strong> <kbd>&larr;</kbd> <kbd>&rarr;</kbd> then <kbd>Enter</kbd></div>
+    <div><strong>Return to Title:</strong> <kbd>Esc</kbd></div>
+  </div>
+
+  <script>
+    // Retro WebAudio Chiptune Synthesizer matching super_leo_bros.c SFX IDs
+    let audioCtx = null;
+    let soundMuted = false;
+
+    function ensureAudio() {
+      if (!audioCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) audioCtx = new AC();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    document.getElementById('mute-btn').addEventListener('click', () => {
+      soundMuted = !soundMuted;
+      document.getElementById('mute-btn').textContent = soundMuted ? 'Sound: OFF' : 'Sound: ON';
+    });
+
+    document.getElementById('fs-btn').addEventListener('click', () => {
+      const el = document.getElementById('cabinet');
+      if (!document.fullscreenElement) {
+        (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    function playToneSeq(notes, stepDur, type = 'square', gainVal = 0.08) {
+      if (soundMuted || !audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      notes.forEach((f, i) => {
+        osc.frequency.setValueAtTime(f, now + i * stepDur);
+      });
+      gain.gain.setValueAtTime(gainVal, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + notes.length * stepDur);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + notes.length * stepDur);
+    }
+
+    function playSweep(fStart, fEnd, dur, type = 'square', gainVal = 0.08) {
+      if (soundMuted || !audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(fStart, now);
+      osc.frequency.linearRampToValueAtTime(fEnd, now + dur);
+      gain.gain.setValueAtTime(gainVal, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + dur);
+    }
+
+    window.onLeoSfx = function(id) {
+      ensureAudio();
+      if (soundMuted || !audioCtx) return;
+      switch (id) {
+        case 1:  playSweep(220, 640, 0.14); break; // SFX_JUMP
+        case 2:  playToneSeq([987.77, 1318.51, 1318.51, 1318.51], 0.05); break; // SFX_COIN
+        case 3:  playToneSeq([330, 440, 550, 660, 440, 550], 0.035); break; // SFX_POWERUP_APPEAR
+        case 4:  playToneSeq([330, 392, 659, 523, 587, 784, 659, 880], 0.045); break; // SFX_POWERUP
+        case 5:  playSweep(600, 200, 0.22); break; // SFX_SHRINK
+        case 6:  playSweep(400, 180, 0.10); break; // SFX_STOMP
+        case 7:  playSweep(530, 180, 0.11); break; // SFX_KICK
+        case 8:  playSweep(180, 55, 0.14, 'sawtooth', 0.12); break; // SFX_BRICK
+        case 9:  playSweep(140, 80, 0.08); break; // SFX_BUMP
+        case 10: playSweep(700, 200, 0.09); break; // SFX_FIREBALL
+        case 11: playToneSeq([412, 490, 824, 654, 734, 980], 0.055); break; // SFX_ONEUP
+        case 12: playSweep(220, 880, 0.40); break; // SFX_FLAGPOLE
+        case 13: playToneSeq([261.6, 329.6, 392.0, 523.2, 659.2, 784.0, 1046.5], 0.09); break; // SFX_STAGE_CLEAR
+        case 14: playToneSeq([493.8, 698.4, 698.4, 659.2, 587.3, 523.2], 0.08); break; // SFX_DIE
+        case 15: playToneSeq([523.25, 783.99], 0.11); break; // SFX_CHECKPOINT
+      }
+    };
+
+    const KEY_MAP = {
+      ArrowLeft: 1,
+      ArrowRight: 2,
+      ArrowDown: 3,
+      ArrowUp: 4,
+      Space: 5,
+      KeyZ: 6,
+      KeyX: 7,
+      KeyA: 8,
+      KeyD: 9,
+      KeyS: 10,
+      KeyW: 11,
+      ShiftLeft: 12,
+      ShiftRight: 13,
+      ControlLeft: 14,
+      ControlRight: 14,
+      Enter: 15,
+      Escape: 16
+    };
+
+    let wasmReady = false;
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.createImageData(320, 240);
+
+    var Module = {
+      onRuntimeInitialized: function() {
+        document.getElementById('loading-overlay').style.display = 'none';
+        Module._wasm_init();
+        wasmReady = true;
+
+        let lastTime = performance.now();
+        const STEP = 1000 / 60;
+        let accum = 0;
+
+        function loop(now) {
+          let dt = now - lastTime;
+          lastTime = now;
+          if (dt > 100) dt = 100;
+          accum += dt;
+          while (accum >= STEP) {
+            Module._wasm_step_frame();
+            accum -= STEP;
+          }
+          const fbPtr = Module._wasm_get_fb();
+          const buf = Module.HEAPU8 ? Module.HEAPU8.buffer : wasmMemory.buffer;
+          imageData.data.set(new Uint8ClampedArray(buf, fbPtr, 320 * 240 * 4));
+          ctx.putImageData(imageData, 0, 0);
+          requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
+      }
+    };
+
+    window.addEventListener('keydown', (e) => {
+      const k = KEY_MAP[e.code];
+      if (k) {
+        e.preventDefault();
+        ensureAudio();
+        if (wasmReady) Module._wasm_set_key(k, 1);
+      }
+    }, { passive: false });
+
+    window.addEventListener('keyup', (e) => {
+      const k = KEY_MAP[e.code];
+      if (k) {
+        e.preventDefault();
+        if (wasmReady) Module._wasm_set_key(k, 0);
+      }
+    }, { passive: false });
+
+    // Touch buttons
+    document.querySelectorAll('.tbtn').forEach((btn) => {
+      const k = parseInt(btn.getAttribute('data-k'), 10);
+      const press = (e) => {
+        e.preventDefault();
+        ensureAudio();
+        btn.classList.add('active');
+        if (wasmReady) Module._wasm_set_key(k, 1);
+      };
+      const release = (e) => {
+        e.preventDefault();
+        btn.classList.remove('active');
+        if (wasmReady) Module._wasm_set_key(k, 0);
+      };
+      btn.addEventListener('pointerdown', press);
+      btn.addEventListener('pointerup', release);
+      btn.addEventListener('pointerleave', release);
+      btn.addEventListener('pointercancel', release);
+    });
+  </script>
+  <script src="super_leo_bros.js"></script>
+</body>
+</html>
