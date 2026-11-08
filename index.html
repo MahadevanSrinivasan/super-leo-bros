@@ -156,7 +156,78 @@
       z-index: 5;
     }
 
-    /* Mobile & Touch Controller Deck */
+    /* On-Screen Direct Touch Gesture Overlay (Default on Mobile) */
+    #gesture-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: auto;
+      touch-action: none;
+      overflow: hidden;
+    }
+    .touch-stick-base {
+      position: absolute;
+      width: 84px;
+      height: 84px;
+      margin-left: -42px;
+      margin-top: -42px;
+      border-radius: 50%;
+      border: 2px solid rgba(247, 201, 72, 0.45);
+      background: radial-gradient(circle, rgba(247, 201, 72, 0.14) 0%, rgba(13, 17, 23, 0.25) 75%);
+      pointer-events: none;
+      display: none;
+    }
+    .touch-stick-knob {
+      position: absolute;
+      width: 38px;
+      height: 38px;
+      margin-left: -19px;
+      margin-top: -19px;
+      border-radius: 50%;
+      background: rgba(247, 201, 72, 0.75);
+      border: 2px solid #fff;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      display: none;
+    }
+    .touch-action-ripple {
+      position: absolute;
+      width: 68px;
+      height: 68px;
+      margin-left: -34px;
+      margin-top: -34px;
+      border-radius: 50%;
+      border: 2px solid rgba(220, 40, 30, 0.75);
+      background: rgba(220, 40, 30, 0.28);
+      pointer-events: none;
+      display: none;
+    }
+    #gesture-hint {
+      position: absolute;
+      left: 50%;
+      bottom: 8px;
+      transform: translateX(-50%);
+      background: rgba(13, 17, 23, 0.82);
+      border: 1px solid rgba(247, 201, 72, 0.4);
+      color: #f0f6fc;
+      font-size: 0.72rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+    @media (pointer: coarse), (max-width: 820px) {
+      #gesture-hint {
+        opacity: 0.92;
+      }
+    }
+    #gesture-hint.hidden {
+      opacity: 0 !important;
+    }
+
+    /* Optional Virtual Button Deck (shown only when user toggles Touch: BUTTONS) */
     .touch-controls {
       display: none;
       width: 100%;
@@ -169,13 +240,8 @@
       touch-action: none;
       z-index: 20;
     }
-    body.force-touch .touch-controls {
+    body.show-gamepad .touch-controls {
       display: flex;
-    }
-    @media (pointer: coarse), (max-width: 820px) {
-      body:not(.hide-touch) .touch-controls {
-        display: flex;
-      }
     }
 
     /* Cross D-Pad */
@@ -458,7 +524,7 @@
     </div>
     <div class="toolbar">
       <a class="btn" href="https://theshybulb.com/projects/">&larr; The Shy Bulb</a>
-      <button class="btn" id="touch-btn" type="button">Touch: AUTO</button>
+      <button class="btn" id="touch-btn" type="button">Touch: SCREEN</button>
       <button class="btn" id="mute-btn" type="button">Sound: ON</button>
       <button class="btn" id="fs-btn" type="button">Fullscreen</button>
       <a class="btn" href="https://github.com/MahadevanSrinivasan/super-leo-bros" target="_blank" rel="noopener">GitHub</a>
@@ -468,6 +534,12 @@
   <div class="cabinet" id="cabinet">
     <div class="canvas-wrap">
       <canvas id="game-canvas" width="320" height="240"></canvas>
+      <div id="gesture-layer" aria-label="Direct Touch Screen Controls">
+        <div class="touch-stick-base" id="stick-base"></div>
+        <div class="touch-stick-knob" id="stick-knob"></div>
+        <div class="touch-action-ripple" id="action-ripple"></div>
+        <div id="gesture-hint">Slide on screen to Run &bull; Flick &uarr; or Tap Right to Jump &bull; Slide &darr; for Pipe</div>
+      </div>
       <div id="loading-overlay">Loading WebAssembly module...</div>
     </div>
 
@@ -494,12 +566,10 @@
   </div>
 
   <div class="controls-card">
-    <div><strong>Move:</strong> <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd></div>
-    <div><strong>Jump (Hold for higher):</strong> <kbd>Space</kbd>, <kbd>X</kbd>, <kbd>&uarr;</kbd>, or <kbd>W</kbd></div>
-    <div><strong>Sprint &amp; Fireballs:</strong> Hold <kbd>Z</kbd> or <kbd>Shift</kbd></div>
-    <div><strong>Crouch / Secret Pipe:</strong> <kbd>&darr;</kbd> or <kbd>S</kbd> (4th pipe in 1-1!)</div>
-    <div><strong>Stage Select (Title):</strong> <kbd>&larr;</kbd> <kbd>&rarr;</kbd> then <kbd>Enter</kbd></div>
-    <div><strong>Return to Title:</strong> <kbd>Esc</kbd></div>
+    <div><strong>Mobile Touch (No Buttons!):</strong> Slide anywhere to Run, flick <kbd>&uarr;</kbd> or tap Right side to Jump/Fire, slide <kbd>&darr;</kbd> for Pipe</div>
+    <div><strong>Keyboard Move:</strong> <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd> &bull; <strong>Jump:</strong> <kbd>Space</kbd> / <kbd>X</kbd> / <kbd>&uarr;</kbd></div>
+    <div><strong>Sprint &amp; Fireballs:</strong> Hold <kbd>Z</kbd> or <kbd>Shift</kbd> &bull; <strong>Pipe:</strong> <kbd>&darr;</kbd> or <kbd>S</kbd></div>
+    <div><strong>Stage Select (Title):</strong> Tap Left/Right of box or <kbd>&larr;</kbd> <kbd>&rarr;</kbd>, tap center or <kbd>Enter</kbd> to Start</div>
   </div>
 
   <script>
@@ -522,23 +592,17 @@
       document.getElementById('mute-btn').textContent = soundMuted ? 'Sound: OFF' : 'Sound: ON';
     });
 
-    // Touch controls visibility toggle: AUTO -> ON -> OFF
-    let touchMode = 'auto';
+    // Touch mode toggle: SCREEN (buttonless direct gestures) -> BUTTONS (show gamepad)
+    let touchMode = 'screen';
     document.getElementById('touch-btn').addEventListener('click', () => {
-      if (touchMode === 'auto') {
-        touchMode = 'on';
-        document.body.classList.add('force-touch');
-        document.body.classList.remove('hide-touch');
-        document.getElementById('touch-btn').textContent = 'Touch: ON';
-      } else if (touchMode === 'on') {
-        touchMode = 'off';
-        document.body.classList.remove('force-touch');
-        document.body.classList.add('hide-touch');
-        document.getElementById('touch-btn').textContent = 'Touch: OFF';
+      if (touchMode === 'screen') {
+        touchMode = 'buttons';
+        document.body.classList.add('show-gamepad');
+        document.getElementById('touch-btn').textContent = 'Touch: BUTTONS';
       } else {
-        touchMode = 'auto';
-        document.body.classList.remove('force-touch', 'hide-touch');
-        document.getElementById('touch-btn').textContent = 'Touch: AUTO';
+        touchMode = 'screen';
+        document.body.classList.remove('show-gamepad');
+        document.getElementById('touch-btn').textContent = 'Touch: SCREEN';
       }
     });
 
@@ -787,16 +851,181 @@
       }
     });
 
-    // Tap directly on the game canvas to unlock audio & press START (Enter)
-    canvas.addEventListener('pointerdown', (e) => {
+    // Direct On-Screen Gesture Controller (Button-Free Mobile Play)
+    const gestureLayer = document.getElementById('gesture-layer');
+    const stickBase = document.getElementById('stick-base');
+    const stickKnob = document.getElementById('stick-knob');
+    const actionRipple = document.getElementById('action-ripple');
+    const gestureHint = document.getElementById('gesture-hint');
+
+    const gestureTouches = new Map(); // id -> { startX, startY, curX, curY, relStartX, relStartY, role }
+    let activeGestureKeys = new Set();
+
+    function pulseKey(k, ms = 85) {
+      if (!wasmReady) return;
+      Module._wasm_set_key(k, 1);
+      setTimeout(() => {
+        if (wasmReady && !activeGestureKeys.has(k) && !activeTouchKeys.has(k)) {
+          Module._wasm_set_key(k, 0);
+        }
+      }, ms);
+    }
+
+    function syncGestureKeys() {
+      const nextKeys = new Set();
+      let moveTouch = null;
+      let actionTouch = null;
+
+      gestureTouches.forEach((t) => {
+        const dx = t.curX - t.startX;
+        const dy = t.curY - t.startY;
+
+        // Allow a single finger on the right side to become a movement stick if dragged horizontally
+        if (t.role === 'action' && gestureTouches.size === 1 && Math.abs(dx) > 18) {
+          t.role = 'move';
+        }
+
+        if (t.role === 'move') {
+          moveTouch = t;
+          if (dx < -8) {
+            nextKeys.add(1); // Left
+          } else if (dx > 8) {
+            nextKeys.add(2); // Right
+          } else if (t.relStartX < 0.24) {
+            nextKeys.add(1); // Tap far-left = Left
+          } else {
+            nextKeys.add(2); // Tap mid-left = Right
+          }
+          // Auto-sprint when sliding further horizontally
+          if (Math.abs(dx) > 24) {
+            nextKeys.add(6); // Sprint / Fire
+          }
+          // 1-Thumb vertical flicks: Slide UP to Jump, Slide DOWN to Crouch/Enter Pipe
+          if (dy < -20) {
+            nextKeys.add(5); // Jump
+            nextKeys.add(6); // Sprint Jump
+          } else if (dy > 22) {
+            nextKeys.add(3); // Down / Pipe
+          }
+        } else if (t.role === 'action') {
+          actionTouch = t;
+          if (dy > 24) {
+            nextKeys.add(3); // Slide down on right side = Crouch / Pipe
+          } else {
+            nextKeys.add(5); // Jump
+            nextKeys.add(6); // Fireball / Sprint
+          }
+        }
+      });
+
+      // Update floating thumbstick visual
+      if (moveTouch) {
+        const dx = moveTouch.curX - moveTouch.startX;
+        const dy = moveTouch.curY - moveTouch.startY;
+        const dist = Math.hypot(dx, dy);
+        const maxR = 34;
+        const clampedX = dist > maxR ? moveTouch.startX + (dx / dist) * maxR : moveTouch.curX;
+        const clampedY = dist > maxR ? moveTouch.startY + (dy / dist) * maxR : moveTouch.curY;
+        stickBase.style.display = 'block';
+        stickBase.style.left = moveTouch.startX + 'px';
+        stickBase.style.top = moveTouch.startY + 'px';
+        stickKnob.style.display = 'block';
+        stickKnob.style.left = clampedX + 'px';
+        stickKnob.style.top = clampedY + 'px';
+      } else {
+        stickBase.style.display = 'none';
+        stickKnob.style.display = 'none';
+      }
+
+      // Update right-side action ripple visual
+      if (actionTouch) {
+        actionRipple.style.display = 'block';
+        actionRipple.style.left = actionTouch.curX + 'px';
+        actionRipple.style.top = actionTouch.curY + 'px';
+      } else {
+        actionRipple.style.display = 'none';
+      }
+
+      if (wasmReady) {
+        nextKeys.forEach((k) => {
+          if (!activeGestureKeys.has(k)) Module._wasm_set_key(k, 1);
+        });
+        activeGestureKeys.forEach((k) => {
+          if (!nextKeys.has(k) && !activeTouchKeys.has(k)) Module._wasm_set_key(k, 0);
+        });
+      }
+      activeGestureKeys = nextKeys;
+    }
+
+    gestureLayer.addEventListener('touchstart', (e) => {
       e.preventDefault();
       ensureAudio();
-      if (wasmReady) {
-        Module._wasm_set_key(15, 1);
-        setTimeout(() => {
-          if (wasmReady) Module._wasm_set_key(15, 0);
-        }, 90);
+      if (gestureHint) gestureHint.classList.add('hidden');
+
+      const rect = gestureLayer.getBoundingClientRect();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        const x = t.clientX - rect.left;
+        const y = t.clientY - rect.top;
+        const relX = x / Math.max(1, rect.width);
+        const relY = y / Math.max(1, rect.height);
+
+        // Title screen stage-select & start support on tap
+        if (relY > 0.62 && relY < 0.84 && relX < 0.34) {
+          pulseKey(1, 70); // Stage Select Left
+        } else if (relY > 0.62 && relY < 0.84 && relX > 0.66) {
+          pulseKey(2, 70); // Stage Select Right
+        } else {
+          pulseKey(15, 80); // Enter (starts game from Title / GameOver / Victory; ignored during gameplay)
+        }
+
+        let hasMove = false;
+        gestureTouches.forEach((gt) => { if (gt.role === 'move') hasMove = true; });
+        const role = (relX < 0.54 && !hasMove) ? 'move' : 'action';
+
+        gestureTouches.set(t.identifier, {
+          startX: x,
+          startY: y,
+          curX: x,
+          curY: y,
+          relStartX: relX,
+          relStartY: relY,
+          role
+        });
       }
+      syncGestureKeys();
+    }, { passive: false });
+
+    gestureLayer.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const rect = gestureLayer.getBoundingClientRect();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        const state = gestureTouches.get(t.identifier);
+        if (state) {
+          state.curX = t.clientX - rect.left;
+          state.curY = t.clientY - rect.top;
+        }
+      }
+      syncGestureKeys();
+    }, { passive: false });
+
+    function endGestureTouches(e) {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        gestureTouches.delete(e.changedTouches[i].identifier);
+      }
+      syncGestureKeys();
+    }
+
+    gestureLayer.addEventListener('touchend', endGestureTouches, { passive: false });
+    gestureLayer.addEventListener('touchcancel', endGestureTouches, { passive: false });
+    gestureLayer.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // Desktop click on screen to start stage
+    gestureLayer.addEventListener('mousedown', (e) => {
+      ensureAudio();
+      pulseKey(15, 90);
     });
   </script>
   <script src="super_leo_bros.js"></script>
