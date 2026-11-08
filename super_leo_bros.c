@@ -78,7 +78,9 @@ enum {
     ENT_FLOWER,       /* Fire flower */
     ENT_STAR,         /* Invincibility star */
     ENT_ONEUP,        /* 1-Up green mushroom */
-    ENT_PLATFORM      /* Moving platform */
+    ENT_PLATFORM,     /* Vertical moving platform */
+    ENT_HPLATFORM,    /* Horizontal moving platform */
+    ENT_FLY_TURTLE    /* Winged bouncing/flying turtle */
 };
 
 /* Sound effect IDs */
@@ -188,7 +190,7 @@ static int boss_bridge_collapse = 0;
 static int game_won = 0;
 static int title_screen = 1;
 static int selected_start_level = 0;
-static int max_unlocked_level = 3; /* All 4 stages accessible from title if desired */
+static int max_unlocked_level = 11; /* All 12 stages (Worlds 1-1 to 3-4) accessible from title */
 
 #ifndef __EMSCRIPTEN__
 /* Audio synthesis state */
@@ -511,8 +513,8 @@ static void spawn_entity(int type, float x, float y, int dir) {
             } else if (type == ENT_BOSS) {
                 entities[i].w = 28;
                 entities[i].h = 30;
-                entities[i].hp = 5;
-                entities[i].vx = -0.5f;
+                entities[i].hp = (current_level == 11) ? 10 : ((current_level == 7) ? 7 : 5);
+                entities[i].vx = (current_level == 11) ? -0.75f : ((current_level == 7) ? -0.62f : -0.5f);
             } else if (type == ENT_MUSHROOM || type == ENT_ONEUP) {
                 entities[i].vx = 1.0f;
                 entities[i].vy = -1.5f;
@@ -523,6 +525,14 @@ static void spawn_entity(int type, float x, float y, int dir) {
                 entities[i].w = 48;
                 entities[i].h = 8;
                 entities[i].vy = (dir > 0) ? 0.8f : -0.8f;
+            } else if (type == ENT_HPLATFORM) {
+                entities[i].w = 48;
+                entities[i].h = 8;
+                entities[i].vx = (dir > 0) ? 0.9f : -0.9f;
+            } else if (type == ENT_FLY_TURTLE) {
+                entities[i].vx = 0.65f * dir;
+                entities[i].h = 20;
+                entities[i].y -= 6;
             }
             break;
         }
@@ -830,6 +840,380 @@ static void build_level(int lvl, int bonus) {
 
         /* Spawn Castle Boss on bridge */
         spawn_entity(ENT_BOSS, 160 * 16, 8 * 16, -1);
+
+    } else if (lvl == 4) {
+        /* ================= WORLD 2-1: GOLDEN PYRAMID DESERT ================= */
+        for (int c = 0; c < MAP_W; c++) {
+            if ((c >= 66 && c <= 69) || (c >= 110 && c <= 114) || (c >= 148 && c <= 151)) continue;
+            map[13][c] = '#';
+            map[14][c] = '#';
+        }
+        map[9][14] = '?'; map[9][15] = 'M'; map[9][16] = '?';
+        /* First Desert Springboard ('J') launching into high coin arc */
+        map[12][22] = 'J';
+        for (int c = 24; c <= 30; c++) map[5][c] = 'o';
+
+        /* Sand pyramid 1 */
+        for (int h = 0; h < 4; h++) {
+            for (int c = 34 + h; c <= 41 - h; c++) map[12 - h][c] = 'S';
+        }
+        map[6][37] = '?'; map[6][38] = '*';
+
+        /* Secret Oasis Bonus Pipe at 52, return at 62 */
+        put_pipe(52, 13, 4, 'E');
+        put_pipe(62, 13, 2, 'P');
+        map[12][65] = 'J'; /* Springboard over desert chasm 66..69 */
+
+        for (int c = 74; c <= 82; c++) { map[8][c] = 'B'; map[6][c] = 'o'; }
+        map[8][78] = 'M';
+        map[8][86] = '1'; /* Hidden 1-Up */
+
+        /* Checkpoint at 94 */
+        map[12][94] = 'C';
+        map[9][98] = '?'; map[9][100] = 'M';
+
+        /* Horizontal moving platform over wide quicksand chasm 110..114 */
+        spawn_entity(ENT_HPLATFORM, 110 * 16, 11 * 16, 1);
+
+        /* Twin desert pyramids */
+        for (int h = 0; h < 4; h++) {
+            for (int c = 122 + h; c <= 129 - h; c++) map[12 - h][c] = 'S';
+            for (int c = 134 + h; c <= 141 - h; c++) map[12 - h][c] = 'S';
+        }
+        map[12][147] = 'J'; /* Springboard over chasm 148..151 */
+
+        for (int c = 156; c <= 164; c += 2) { map[9][c] = '?'; map[7][c] = 'o'; }
+
+        /* Grand Pyramid Staircase to Flagpole */
+        for (int h = 0; h < 8; h++) {
+            for (int c = 176 + h; c <= 183; c++) map[12 - h][c] = 'S';
+        }
+        for (int r = 3; r <= 12; r++) map[r][192] = '|';
+        map[2][192] = 'F';
+        map[12][198] = 'K';
+
+        spawn_entity(ENT_WALKER, 20 * 16, 12 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 32 * 16, 10 * 16, -1);
+        spawn_entity(ENT_TURTLE, 46 * 16, 11 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 78 * 16, 10 * 16, -1);
+        spawn_entity(ENT_WALKER, 88 * 16, 12 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 104 * 16, 9 * 16, -1);
+        spawn_entity(ENT_TURTLE, 132 * 16, 11 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 160 * 16, 9 * 16, -1);
+        spawn_entity(ENT_WALKER, 168 * 16, 12 * 16, -1);
+
+    } else if (lvl == 5) {
+        /* ================= WORLD 2-2: CRYSTAL ICE CAVERN ================= */
+        for (int c = 0; c < MAP_W; c++) {
+            if (c >= 6 && c <= 180) map[1][c] = 'I';
+            if ((c >= 50 && c <= 54) || (c >= 100 && c <= 105) || (c >= 144 && c <= 149)) continue;
+            map[13][c] = (c >= 14 && c <= 170) ? 'I' : '#';
+            map[14][c] = '#';
+        }
+        map[9][14] = 'M'; map[9][16] = '?'; map[9][18] = '?';
+
+        /* Slippery Ice decks & springboards */
+        for (int c = 24; c <= 36; c++) { map[9][c] = 'I'; map[7][c] = 'o'; }
+        map[12][42] = 'J';
+        for (int c = 44; c <= 48; c++) map[5][c] = 'I';
+
+        spawn_entity(ENT_HPLATFORM, 50 * 16, 10 * 16, 1);
+
+        put_pipe(64, 13, 3, 'P');
+        spawn_entity(ENT_PLANT, 64 * 16 + 9, 10 * 16 - 16, 1);
+        put_pipe(74, 13, 4, 'P');
+        spawn_entity(ENT_PLANT, 74 * 16 + 9, 9 * 16 - 16, 1);
+
+        map[8][82] = '*'; /* Starman on ice! */
+        map[12][92] = 'C'; /* Checkpoint */
+        map[9][95] = 'M';
+
+        spawn_entity(ENT_PLATFORM, 101 * 16, 9 * 16, -1);
+
+        for (int c = 112; c <= 128; c++) {
+            map[9][c] = 'I';
+            if (c % 2 == 0) map[5][c] = 'B';
+            map[7][c] = 'o';
+        }
+        map[5][120] = '1';
+
+        spawn_entity(ENT_HPLATFORM, 144 * 16, 10 * 16, 1);
+        map[12][156] = 'J';
+        for (int c = 158; c <= 166; c++) { map[6][c] = 'I'; map[4][c] = 'o'; }
+
+        for (int h = 0; h < 7; h++) {
+            for (int c = 176 + h; c <= 182; c++) map[12 - h][c] = 'I';
+        }
+        for (int r = 3; r <= 12; r++) map[r][192] = '|';
+        map[2][192] = 'F';
+        map[12][198] = 'K';
+
+        spawn_entity(ENT_WALKER, 22 * 16, 12 * 16, -1);
+        spawn_entity(ENT_TURTLE, 32 * 16, 7 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 60 * 16, 10 * 16, -1);
+        spawn_entity(ENT_WALKER, 86 * 16, 12 * 16, -1);
+        spawn_entity(ENT_TURTLE, 116 * 16, 7 * 16, -1);
+        spawn_entity(ENT_WALKER, 124 * 16, 12 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 136 * 16, 9 * 16, -1);
+        spawn_entity(ENT_TURTLE, 164 * 16, 11 * 16, -1);
+
+    } else if (lvl == 6) {
+        /* ================= WORLD 2-3: SNOWY CLOUD PEAKS ================= */
+        for (int c = 0; c <= 16; c++) { map[13][c] = 'I'; map[14][c] = '#'; }
+        map[12][15] = 'J';
+
+        for (int c = 20; c <= 34; c++) { map[9][c] = 'I'; map[7][c] = (c % 2 == 0) ? 'o' : ' '; }
+        map[5][26] = 'M'; map[5][27] = '?';
+
+        spawn_entity(ENT_HPLATFORM, 38 * 16, 9 * 16, 1);
+
+        for (int c = 48; c <= 64; c++) map[10][c] = '=';
+        map[9][62] = 'J';
+        for (int c = 66; c <= 76; c++) { map[5][c] = 'I'; map[3][c] = 'o'; }
+
+        /* Checkpoint island */
+        for (int c = 80; c <= 94; c++) { map[12][c] = 'I'; map[13][c] = '#'; map[14][c] = '#'; }
+        map[11][84] = 'C';
+        map[8][88] = 'M'; map[8][90] = '*';
+
+        spawn_entity(ENT_HPLATFORM, 97 * 16, 10 * 16, 1);
+        for (int c = 108; c <= 122; c++) { map[8][c] = 'I'; map[6][c] = 'o'; }
+        spawn_entity(ENT_PLATFORM, 126 * 16, 9 * 16, -1);
+
+        for (int c = 132; c <= 148; c++) map[10][c] = '=';
+        map[9][146] = 'J';
+        for (int c = 150; c <= 162; c++) { map[6][c] = 'I'; map[4][c] = 'o'; }
+
+        for (int c = 166; c < MAP_W; c++) { map[13][c] = 'I'; map[14][c] = '#'; }
+        for (int h = 0; h < 7; h++) {
+            for (int c = 172 + h; c <= 178; c++) map[12 - h][c] = 'I';
+        }
+        for (int r = 3; r <= 12; r++) map[r][188] = '|';
+        map[2][188] = 'F';
+        map[12][194] = 'K';
+
+        spawn_entity(ENT_FLY_TURTLE, 28 * 16, 6 * 16, -1);
+        spawn_entity(ENT_TURTLE, 54 * 16, 8 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 70 * 16, 3 * 16, -1);
+        spawn_entity(ENT_WALKER, 114 * 16, 7 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 138 * 16, 7 * 16, -1);
+        spawn_entity(ENT_TURTLE, 156 * 16, 4 * 16, -1);
+
+    } else if (lvl == 7) {
+        /* ================= WORLD 2-4: FROST-FIRE FORTRESS & BOSS ================= */
+        for (int c = 0; c < MAP_W; c++) {
+            map[0][c] = 'S';
+            map[1][c] = 'S';
+            if ((c >= 22 && c <= 26) || (c >= 44 && c <= 50) || (c >= 74 && c <= 80) ||
+                (c >= 110 && c <= 118) || (c >= 152 && c <= 168)) {
+                map[13][c] = 'L';
+                map[14][c] = 'L';
+            } else {
+                map[13][c] = (c >= 52 && c <= 108) ? 'I' : 'S';
+                map[14][c] = 'S';
+            }
+        }
+        map[9][14] = 'M';
+        map[12][21] = 'J';
+        map[9][34] = 'F';
+        spawn_entity(ENT_HPLATFORM, 45 * 16, 10 * 16, 1);
+        map[9][62] = 'F';
+        spawn_entity(ENT_PLATFORM, 75 * 16, 9 * 16, -1);
+
+        map[12][86] = 'C';
+        map[9][90] = 'M'; map[9][92] = '?';
+        map[9][102] = 'F';
+        spawn_entity(ENT_HPLATFORM, 111 * 16, 10 * 16, 1);
+
+        for (int c = 124; c <= 136; c += 3) map[9][c] = '?';
+        map[9][130] = 'M';
+        map[12][142] = 'J';
+
+        for (int c = 152; c <= 166; c++) map[10][c] = '=';
+        for (int c = 155; c <= 161; c++) map[6][c] = 'I';
+        map[9][167] = 'A';
+        map[10][167] = 'S'; map[11][167] = 'S'; map[12][167] = 'S';
+
+        spawn_entity(ENT_FLY_TURTLE, 38 * 16, 9 * 16, -1);
+        spawn_entity(ENT_TURTLE, 68 * 16, 11 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 128 * 16, 8 * 16, -1);
+        spawn_entity(ENT_BOSS, 160 * 16, 8 * 16, -1);
+
+    } else if (lvl == 8) {
+        /* ================= WORLD 3-1: STARLIGHT NIGHT OVERWORLD ================= */
+        for (int c = 0; c < MAP_W; c++) {
+            if ((c >= 66 && c <= 70) || (c >= 108 && c <= 113) || (c >= 148 && c <= 152)) continue;
+            map[13][c] = '#';
+            map[14][c] = '#';
+        }
+        map[9][15] = 'M'; map[9][16] = '?'; map[9][17] = '?';
+        put_pipe(26, 13, 3, 'P');
+        spawn_entity(ENT_PLANT, 26 * 16 + 9, 10 * 16 - 16, 1);
+        map[12][34] = 'J';
+        for (int c = 36; c <= 46; c++) { map[6][c] = '='; map[4][c] = 'o'; }
+
+        /* Secret Starlight Vault Pipe at 52, return at 62 */
+        put_pipe(52, 13, 4, 'E');
+        put_pipe(62, 13, 2, 'P');
+        spawn_entity(ENT_HPLATFORM, 66 * 16, 10 * 16, 1);
+
+        for (int c = 76; c <= 86; c++) { map[8][c] = 'B'; map[6][c] = 'o'; }
+        map[8][81] = '*';
+        map[12][94] = 'C'; /* Checkpoint */
+        map[9][98] = 'M'; map[5][98] = '1';
+
+        spawn_entity(ENT_HPLATFORM, 108 * 16, 9 * 16, 1);
+        put_pipe(120, 13, 4, 'P');
+        spawn_entity(ENT_PLANT, 120 * 16 + 9, 9 * 16 - 16, 1);
+        put_pipe(130, 13, 3, 'P');
+        spawn_entity(ENT_PLANT, 130 * 16 + 9, 10 * 16 - 16, 1);
+
+        map[12][146] = 'J';
+        for (int c = 154; c <= 166; c++) { map[7][c] = '='; map[5][c] = 'o'; }
+
+        for (int h = 0; h < 8; h++) {
+            for (int c = 176 + h; c <= 183; c++) map[12 - h][c] = 'S';
+        }
+        for (int r = 3; r <= 12; r++) map[r][192] = '|';
+        map[2][192] = 'F';
+        map[12][198] = 'K';
+
+        spawn_entity(ENT_FLY_TURTLE, 22 * 16, 9 * 16, -1);
+        spawn_entity(ENT_TURTLE, 42 * 16, 4 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 78 * 16, 10 * 16, -1);
+        spawn_entity(ENT_WALKER, 84 * 16, 12 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 102 * 16, 8 * 16, -1);
+        spawn_entity(ENT_TURTLE, 138 * 16, 11 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 160 * 16, 5 * 16, -1);
+        spawn_entity(ENT_WALKER, 170 * 16, 12 * 16, -1);
+
+    } else if (lvl == 9) {
+        /* ================= WORLD 3-2: HAUNTED SHADOW CAVERN ================= */
+        for (int c = 0; c < MAP_W; c++) {
+            if (c >= 6 && c <= 180) map[1][c] = 'B';
+            if ((c >= 44 && c <= 49) || (c >= 98 && c <= 104) || (c >= 140 && c <= 146)) continue;
+            map[13][c] = '#';
+            map[14][c] = '#';
+        }
+        map[9][14] = 'M'; map[9][16] = '?';
+        map[9][28] = 'F'; /* Underground Firebar! */
+        map[12][42] = 'J';
+        spawn_entity(ENT_HPLATFORM, 44 * 16, 8 * 16, 1);
+
+        for (int c = 56; c <= 68; c++) { map[8][c] = 'B'; map[6][c] = 'o'; }
+        map[8][62] = '*';
+        map[9][76] = 'F';
+
+        map[12][92] = 'C'; /* Checkpoint */
+        map[9][95] = 'M';
+        spawn_entity(ENT_PLATFORM, 99 * 16, 9 * 16, 1);
+
+        for (int c = 110; c <= 126; c++) {
+            map[9][c] = 'I';
+            if (c % 2 == 0) map[5][c] = 'B';
+            map[7][c] = 'o';
+        }
+        map[5][118] = '1';
+        map[9][132] = 'F';
+        spawn_entity(ENT_HPLATFORM, 140 * 16, 10 * 16, -1);
+
+        for (int h = 0; h < 7; h++) {
+            for (int c = 176 + h; c <= 182; c++) map[12 - h][c] = 'S';
+        }
+        for (int r = 3; r <= 12; r++) map[r][192] = '|';
+        map[2][192] = 'F';
+        map[12][198] = 'K';
+
+        spawn_entity(ENT_WALKER, 20 * 16, 12 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 36 * 16, 9 * 16, -1);
+        spawn_entity(ENT_TURTLE, 62 * 16, 6 * 16, -1);
+        spawn_entity(ENT_WALKER, 84 * 16, 12 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 114 * 16, 7 * 16, -1);
+        spawn_entity(ENT_TURTLE, 122 * 16, 11 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 156 * 16, 9 * 16, -1);
+        spawn_entity(ENT_WALKER, 166 * 16, 12 * 16, -1);
+
+    } else if (lvl == 10) {
+        /* ================= WORLD 3-3: SKY ARMADA ATHLETIC ================= */
+        for (int c = 0; c <= 16; c++) { map[13][c] = '#'; map[14][c] = '#'; }
+        map[12][14] = 'J';
+
+        for (int c = 20; c <= 34; c++) { map[8][c] = '='; map[6][c] = 'o'; }
+        map[4][27] = 'M';
+        spawn_entity(ENT_HPLATFORM, 38 * 16, 8 * 16, 1);
+
+        for (int c = 48; c <= 62; c++) map[10][c] = 'I';
+        map[9][60] = 'J';
+        for (int c = 64; c <= 76; c++) { map[5][c] = '='; map[3][c] = 'o'; }
+
+        /* Checkpoint deck */
+        for (int c = 80; c <= 94; c++) { map[12][c] = '#'; map[13][c] = '#'; map[14][c] = '#'; }
+        map[11][84] = 'C';
+        map[8][88] = 'M'; map[8][90] = '*';
+
+        spawn_entity(ENT_HPLATFORM, 97 * 16, 9 * 16, 1);
+        spawn_entity(ENT_PLATFORM, 110 * 16, 8 * 16, -1);
+
+        for (int c = 118; c <= 134; c++) { map[9][c] = 'I'; map[7][c] = 'o'; }
+        map[8][132] = 'J';
+        for (int c = 138; c <= 152; c++) { map[5][c] = '='; map[3][c] = 'o'; }
+        spawn_entity(ENT_HPLATFORM, 155 * 16, 9 * 16, 1);
+
+        for (int c = 166; c < MAP_W; c++) { map[13][c] = '#'; map[14][c] = '#'; }
+        for (int h = 0; h < 7; h++) {
+            for (int c = 172 + h; c <= 178; c++) map[12 - h][c] = 'S';
+        }
+        for (int r = 3; r <= 12; r++) map[r][188] = '|';
+        map[2][188] = 'F';
+        map[12][194] = 'K';
+
+        spawn_entity(ENT_FLY_TURTLE, 26 * 16, 5 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 54 * 16, 7 * 16, -1);
+        spawn_entity(ENT_TURTLE, 70 * 16, 3 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 124 * 16, 6 * 16, -1);
+        spawn_entity(ENT_TURTLE, 144 * 16, 3 * 16, -1);
+
+    } else if (lvl == 11) {
+        /* ================= WORLD 3-4: GRAND KOOPA-KING CITADEL ================= */
+        for (int c = 0; c < MAP_W; c++) {
+            map[0][c] = 'S';
+            map[1][c] = 'S';
+            if ((c >= 20 && c <= 26) || (c >= 42 && c <= 50) || (c >= 72 && c <= 80) ||
+                (c >= 106 && c <= 118) || (c >= 152 && c <= 168)) {
+                map[13][c] = 'L';
+                map[14][c] = 'L';
+            } else {
+                map[13][c] = (c >= 82 && c <= 104) ? 'I' : 'S';
+                map[14][c] = 'S';
+            }
+        }
+        map[9][14] = 'M';
+        map[12][19] = 'J';
+        map[9][32] = 'F';
+        spawn_entity(ENT_HPLATFORM, 43 * 16, 10 * 16, 1);
+        map[9][58] = 'F';
+        map[9][66] = 'F';
+        spawn_entity(ENT_PLATFORM, 74 * 16, 9 * 16, 1);
+
+        map[12][86] = 'C'; /* Checkpoint */
+        map[9][90] = 'M'; map[9][92] = '?';
+        map[9][100] = 'F';
+        spawn_entity(ENT_HPLATFORM, 108 * 16, 10 * 16, 1);
+
+        for (int c = 124; c <= 136; c += 3) map[9][c] = '?';
+        map[9][130] = 'M';
+        map[12][142] = 'J';
+
+        /* Final Boss Bridge over Lava (columns 152..166) */
+        for (int c = 152; c <= 166; c++) map[10][c] = '=';
+        for (int c = 155; c <= 161; c++) map[6][c] = 'S';
+        map[9][167] = 'A';
+        map[10][167] = 'S'; map[11][167] = 'S'; map[12][167] = 'S';
+
+        spawn_entity(ENT_FLY_TURTLE, 36 * 16, 9 * 16, -1);
+        spawn_entity(ENT_TURTLE, 62 * 16, 11 * 16, -1);
+        spawn_entity(ENT_FLY_TURTLE, 128 * 16, 8 * 16, -1);
+        spawn_entity(ENT_BOSS, 160 * 16, 8 * 16, -1);
     }
 }
 
@@ -862,7 +1246,8 @@ static void start_level(int lvl, int keep_power) {
 static int is_solid_tile(char t) {
     return (t == '#' || t == 'B' || t == '?' || t == 'M' || t == '*' ||
             t == '1' || t == 'U' || t == 'S' || t == 'P' || t == 'p' ||
-            t == 'E' || t == 'X' || t == '[' || t == ']' || t == '=');
+            t == 'E' || t == 'X' || t == '[' || t == ']' || t == '=' ||
+            t == 'I' || t == 'J');
 }
 
 static char get_tile(int tx, int ty) {
@@ -1014,7 +1399,7 @@ static void update_game(const Uint8 *keys) {
         player.flagpole_timer--;
         if (player.flagpole_timer <= 0) {
             checkpoint_reached = 0;
-            if (current_level < 3) {
+            if (current_level < 11) {
                 start_level(current_level + 1, 1);
             } else {
                 game_won = 1;
@@ -1023,7 +1408,7 @@ static void update_game(const Uint8 *keys) {
         return;
     }
 
-    /* Handle Boss Bridge Collapse in 1-4 */
+    /* Handle Boss Bridge Collapse in 1-4, 2-4, 3-4 */
     if (boss_bridge_collapse > 0) {
         boss_bridge_collapse++;
         int col = 166 - (boss_bridge_collapse / 4);
@@ -1043,7 +1428,12 @@ static void update_game(const Uint8 *keys) {
             play_sfx(SFX_STAGE_CLEAR);
         }
         if (boss_bridge_collapse > 160) {
-            game_won = 1;
+            checkpoint_reached = 0;
+            if (current_level < 11) {
+                start_level(current_level + 1, 1);
+            } else {
+                game_won = 1;
+            }
         }
         return;
     }
@@ -1111,16 +1501,21 @@ static void update_game(const Uint8 *keys) {
     }
     prev_run = run;
 
-    /* Classic Super Mario Bros. Horizontal Momentum & Skidding Physics */
+    /* Classic Super Mario Bros. Horizontal Momentum & Skidding Physics (+ Ice Friction!) */
+    int foot_tx = (int)((player.x + player.w / 2) / TILE_SIZE);
+    int foot_ty = (int)((player.y + player.h + 1) / TILE_SIZE);
+    int on_ice = player.on_ground && (get_tile(foot_tx, foot_ty) == 'I');
+
     float max_speed = run ? 3.1f : 2.0f;
-    float accel = player.on_ground ? (run ? 0.14f : 0.10f) : 0.08f;
-    float decel = player.on_ground ? 0.10f : 0.03f;
+    float accel = player.on_ground ? (on_ice ? 0.065f : (run ? 0.14f : 0.10f)) : 0.08f;
+    float decel = player.on_ground ? (on_ice ? 0.022f : 0.10f) : 0.03f;
+    float skid_decel = on_ice ? 0.09f : 0.24f;
 
     player.skidding = 0;
     if (left && !player.crouch) {
         player.dir = -1;
         if (player.vx > 0.4f && player.on_ground) {
-            player.vx -= 0.24f;
+            player.vx -= skid_decel;
             player.skidding = 1;
         } else {
             player.vx -= accel;
@@ -1129,7 +1524,7 @@ static void update_game(const Uint8 *keys) {
     } else if (right && !player.crouch) {
         player.dir = 1;
         if (player.vx < -0.4f && player.on_ground) {
-            player.vx += 0.24f;
+            player.vx += skid_decel;
             player.skidding = 1;
         } else {
             player.vx += accel;
@@ -1240,8 +1635,8 @@ static void update_game(const Uint8 *keys) {
                 add_score(500, tx * TILE_SIZE, ty * TILE_SIZE);
                 continue;
             }
-            if (t == '|' || t == 'F') {
-                if (current_level != 3 && player.flagpole_state == 0) {
+            if (t == '|' || (t == 'F' && ty <= 3)) {
+                if ((current_level % 4) != 3 && player.flagpole_state == 0) {
                     player.flagpole_state = 1;
                     player.x = tx * TILE_SIZE - 6;
                     player.vx = player.vy = 0;
@@ -1251,7 +1646,7 @@ static void update_game(const Uint8 *keys) {
                 }
             }
             if (t == 'A') {
-                /* Touched Golden Axe in 1-4! */
+                /* Touched Golden Axe in Castle Boss stage! */
                 map[ty][tx] = ' ';
                 boss_bridge_collapse = 1;
                 add_score(2000, tx * TILE_SIZE, ty * TILE_SIZE);
@@ -1269,8 +1664,16 @@ static void update_game(const Uint8 *keys) {
                 float prev_bottom = (player.y - orig_vy) + player.h;
                 if (orig_vy > 0 && prev_bottom <= ty * TILE_SIZE + 6.0f) {
                     player.y = ty * TILE_SIZE - player.h;
-                    player.vy = 0;
-                    player.on_ground = 1;
+                    if (t == 'J') {
+                        /* Springboard super-bounce! */
+                        player.vy = jump ? -7.2f : -5.6f;
+                        player.on_ground = 0;
+                        player.jump_hold = 14;
+                        play_sfx(SFX_JUMP);
+                    } else {
+                        player.vy = 0;
+                        player.on_ground = 1;
+                    }
                     resolved_solid_y = 1;
                 } else if (orig_vy < 0 && (player.y - orig_vy) >= (ty + 1) * TILE_SIZE - 6.0f) {
                     int center_tx = (int)((player.x + player.w / 2) / TILE_SIZE);
@@ -1304,11 +1707,15 @@ static void update_game(const Uint8 *keys) {
         cam_x = 0;
     }
 
-    /* Check Castle Firebars in 1-4 */
-    if (current_level == 3) {
+    /* Check Rotating Firebars (row >= 4 so flagpole top 'F' at row 2 is ignored) */
+    {
         float rad = firebar_angle * 3.14159265f / 180.0f;
-        for (int r = 0; r < MAP_H; r++) {
-            for (int c = 0; c < MAP_W; c++) {
+        int start_c = (int)(cam_x / TILE_SIZE) - 2;
+        int end_c   = start_c + (SCREEN_W / TILE_SIZE) + 4;
+        if (start_c < 0) start_c = 0;
+        if (end_c >= MAP_W) end_c = MAP_W - 1;
+        for (int r = 4; r < MAP_H; r++) {
+            for (int c = start_c; c <= end_c; c++) {
                 if (map[r][c] == 'F') {
                     float cx = c * TILE_SIZE + 8;
                     float cy = r * TILE_SIZE + 8;
@@ -1350,7 +1757,8 @@ static void update_game(const Uint8 *keys) {
         for (int e = 0; e < MAX_ENTITIES; e++) {
             if (!entities[e].active) continue;
             int et = entities[e].type;
-            if (et == ENT_WALKER || et == ENT_TURTLE || et == ENT_SHELL || et == ENT_PLANT || et == ENT_BOSS) {
+            if (et == ENT_WALKER || et == ENT_TURTLE || et == ENT_FLY_TURTLE ||
+                et == ENT_SHELL || et == ENT_PLANT || et == ENT_BOSS) {
                 if (rects_overlap(fireballs[i].x, fireballs[i].y, 6, 6,
                                   entities[e].x, entities[e].y, entities[e].w, entities[e].h)) {
                     fireballs[i].active = 0;
@@ -1380,7 +1788,7 @@ static void update_game(const Uint8 *keys) {
 
         /* Only wake up enemies once camera approaches */
         if (e->x > cam_x + SCREEN_W + 64) continue;
-        if (e->x < cam_x - 64 && e->type != ENT_PLATFORM) {
+        if (e->x < cam_x - 64 && e->type != ENT_PLATFORM && e->type != ENT_HPLATFORM) {
             e->active = 0;
             continue;
         }
@@ -1393,6 +1801,21 @@ static void update_game(const Uint8 *keys) {
                 player.x + player.w > e->x && player.x < e->x + e->w &&
                 player.y + player.h >= e->y - 2 && player.y + player.h <= e->y + 8) {
                 player.y = e->y - player.h;
+                player.vy = 0;
+                player.on_ground = 1;
+            }
+            continue;
+        }
+
+        if (e->type == ENT_HPLATFORM) {
+            e->x += e->vx;
+            if (e->x < e->start_x - 24.0f) e->vx = 0.9f;
+            if (e->x > e->start_x + 56.0f) e->vx = -0.9f;
+            if (player.vy >= 0 &&
+                player.x + player.w > e->x && player.x < e->x + e->w &&
+                player.y + player.h >= e->y - 2 && player.y + player.h <= e->y + 8) {
+                player.y = e->y - player.h;
+                player.x += e->vx;
                 player.vy = 0;
                 player.on_ground = 1;
             }
@@ -1427,16 +1850,25 @@ static void update_game(const Uint8 *keys) {
         }
 
         if (e->type == ENT_BOSS) {
+            float spd = (current_level == 11) ? 0.85f : ((current_level == 7) ? 0.70f : 0.55f);
+            int jump_mod = (current_level == 11) ? 65 : ((current_level == 7) ? 80 : 95);
+            int fire_mod = (current_level == 11) ? 75 : ((current_level == 7) ? 90 : 110);
             e->timer++;
             e->x += e->vx;
-            if (e->x < 153 * TILE_SIZE) e->vx = 0.55f;
-            if (e->x > 163 * TILE_SIZE) e->vx = -0.55f;
-            if (e->timer % 95 == 0 && e->on_ground) {
-                e->vy = -3.8f;
+            if (e->x < 153 * TILE_SIZE) e->vx = spd;
+            if (e->x > 163 * TILE_SIZE) e->vx = -spd;
+            if (e->timer % jump_mod == 0 && e->on_ground) {
+                e->vy = (current_level == 11) ? -4.4f : -3.8f;
                 e->on_ground = 0;
             }
-            if (e->timer % 110 == 40) {
+            if (e->timer % fire_mod == 40) {
                 spawn_entity(ENT_BOSS_FIRE, e->x - 10, e->y + 8, -1);
+                if (current_level >= 7) {
+                    spawn_entity(ENT_BOSS_FIRE, e->x - 10, e->y + 20, -1);
+                }
+                if (current_level == 11) {
+                    spawn_entity(ENT_BOSS_FIRE, e->x - 10, e->y - 4, -1);
+                }
                 play_sfx(SFX_FIREBALL);
             }
             e->vy += 0.18f;
@@ -1477,7 +1909,7 @@ static void update_game(const Uint8 *keys) {
         }
 
         /* Gravity & tile physics for moving items & enemies */
-        e->vy += 0.24f;
+        e->vy += (e->type == ENT_FLY_TURTLE) ? 0.14f : 0.24f;
         if (e->vy > 4.5f) e->vy = 4.5f;
 
         e->x += e->vx;
@@ -1497,16 +1929,23 @@ static void update_game(const Uint8 *keys) {
             e->y = ety_bot * TILE_SIZE - e->h;
             if (e->type == ENT_STAR) {
                 e->vy = -3.6f;
+            } else if (e->type == ENT_FLY_TURTLE) {
+                e->vy = -3.4f; /* Winged paratroopa hops continuously! */
             } else {
                 e->vy = 0;
             }
             /* Turtles on sky bridges turn around at edges */
-            if (e->type == ENT_TURTLE && current_level == 2) {
+            if ((e->type == ENT_TURTLE || e->type == ENT_FLY_TURTLE) && ((current_level % 4) == 2)) {
                 int ahead_tx = (int)((e->x + (e->vx > 0 ? e->w + 2 : -2)) / TILE_SIZE);
                 if (!is_solid_tile(get_tile(ahead_tx, ety_bot))) {
                     e->vx = -e->vx;
                     e->dir = -e->dir;
                 }
+            }
+        } else if (e->type == ENT_FLY_TURTLE && (current_level % 4) == 2) {
+            /* In sky stages, winged paratroopas also hover-flap if falling below start_y + 24 */
+            if (e->y > e->start_y + 20.0f && e->vy > 0) {
+                e->vy = -2.8f;
             }
         }
 
@@ -1519,7 +1958,8 @@ static void update_game(const Uint8 *keys) {
         if (e->type == ENT_SHELL && fabsf(e->vx) > 1.0f) {
             for (int j = 0; j < MAX_ENTITIES; j++) {
                 if (i == j || !entities[j].active) continue;
-                if (entities[j].type == ENT_WALKER || entities[j].type == ENT_TURTLE || entities[j].type == ENT_SHELL) {
+                if (entities[j].type == ENT_WALKER || entities[j].type == ENT_TURTLE ||
+                    entities[j].type == ENT_FLY_TURTLE || entities[j].type == ENT_SHELL) {
                     if (rects_overlap(e->x, e->y, e->w, e->h, entities[j].x, entities[j].y, entities[j].w, entities[j].h)) {
                         entities[j].active = 0;
                         add_score(200, entities[j].x, entities[j].y);
@@ -1550,7 +1990,8 @@ static void update_game(const Uint8 *keys) {
                 player.star_timer = 450;
                 add_score(1000, e->x, e->y);
                 play_sfx(SFX_POWERUP);
-            } else if (e->type == ENT_WALKER || e->type == ENT_TURTLE || e->type == ENT_SHELL) {
+            } else if (e->type == ENT_WALKER || e->type == ENT_TURTLE ||
+                       e->type == ENT_FLY_TURTLE || e->type == ENT_SHELL) {
                 if (player.star_timer > 0) {
                     e->active = 0;
                     add_score(200, e->x, e->y);
@@ -1561,12 +2002,18 @@ static void update_game(const Uint8 *keys) {
                     player.vy = -2.5f;
                     add_score(400, e->x, e->y);
                     play_sfx(SFX_KICK);
-                } else if (player.vy > 0 && (player.y + player.h - player.vy) <= e->y + 10) {
+                } else if (player.vy > 0 && (player.y + player.h - player.vy) <= e->y + 12) {
                     /* Stomped from above! */
                     player.vy = -3.8f;
                     if (e->type == ENT_WALKER) {
                         e->active = 0;
                         add_score(100, e->x, e->y);
+                        play_sfx(SFX_STOMP);
+                    } else if (e->type == ENT_FLY_TURTLE) {
+                        /* Clip wings -> becomes normal walking turtle! */
+                        e->type = ENT_TURTLE;
+                        e->vy = 0;
+                        add_score(200, e->x, e->y);
                         play_sfx(SFX_STOMP);
                     } else if (e->type == ENT_TURTLE) {
                         e->type = ENT_SHELL;
@@ -1658,26 +2105,48 @@ static void draw_player(void) {
 
 /* Render Full Frame */
 static void render_game(void) {
+    int world_num = (current_level / 4) + 1;
+    int stage_num = (current_level % 4) + 1;
+
     /* Sky / Background Color per Level */
     Uint32 bg_col;
     if (in_bonus_room || current_level == 1) bg_col = rgb(12, 16, 36);
-    else if (current_level == 3) bg_col = rgb(20, 8, 12);
-    else bg_col = rgb(92, 148, 252);
+    else if (current_level == 5) bg_col = rgb(14, 34, 64);      /* 2-2 Ice Cavern */
+    else if (current_level == 9) bg_col = rgb(28, 12, 42);      /* 3-2 Haunted Cavern */
+    else if (stage_num == 4) bg_col = rgb(20, 8, 12);           /* 1-4, 2-4, 3-4 Castles */
+    else if (current_level == 4) bg_col = rgb(235, 165, 85);    /* 2-1 Golden Desert */
+    else if (current_level == 6) bg_col = rgb(135, 195, 250);   /* 2-3 Snowy Cloud Peaks */
+    else if (world_num == 3) bg_col = rgb(18, 24, 68);          /* 3-1, 3-3 Starlight Night */
+    else bg_col = rgb(92, 148, 252);                            /* 1-1, 1-3 Classic Overworld */
 
     draw_rect(0, 0, SCREEN_W, SCREEN_H, bg_col);
 
-    /* Decorative Clouds, Hills & Bushes on Overworld / Sky */
-    if (!in_bonus_room && (current_level == 0 || current_level == 2)) {
+    /* Twinkling Stars in World 3 Night Stages */
+    if (!in_bonus_room && world_num == 3 && (stage_num == 1 || stage_num == 3)) {
+        for (int s = 0; s < 28; s++) {
+            int sx = (int)((s * 97 + 30 - (int)(cam_x * 0.2f)) % SCREEN_W);
+            if (sx < 0) sx += SCREEN_W;
+            int sy = 20 + (s * 37) % 140;
+            Uint32 stcol = ((frame_counter / 12 + s) % 2) ? rgb(255, 255, 200) : rgb(160, 180, 255);
+            draw_rect(sx, sy, 2, 2, stcol);
+        }
+    }
+
+    /* Decorative Clouds, Hills & Pyramids on Overworld / Sky */
+    if (!in_bonus_room && (stage_num == 1 || stage_num == 3)) {
         for (int i = 0; i < 18; i++) {
             int cx = (int)(i * 220 + 40 - cam_x * 0.4f);
             int cy = 36 + (i % 3) * 16;
-            draw_rect(cx, cy, 32, 12, rgb(245, 250, 255));
-            draw_rect(cx + 6, cy - 6, 20, 8, rgb(245, 250, 255));
+            Uint32 ccol = (world_num == 3) ? rgb(170, 185, 230) : rgb(245, 250, 255);
+            draw_rect(cx, cy, 32, 12, ccol);
+            draw_rect(cx + 6, cy - 6, 20, 8, ccol);
 
-            if (current_level == 0) {
+            if (stage_num == 1) {
                 int hx = (int)(i * 260 + 20 - cam_x * 0.7f);
-                draw_rect(hx, 12 * 16 - 18, 48, 18, rgb(24, 168, 40));
-                draw_rect(hx + 8, 12 * 16 - 28, 32, 10, rgb(24, 168, 40));
+                Uint32 hcol = (current_level == 4) ? rgb(210, 130, 40) :
+                              ((world_num == 3) ? rgb(30, 110, 90) : rgb(24, 168, 40));
+                draw_rect(hx, 13 * 16 - 18, 48, 18, hcol);
+                draw_rect(hx + 8, 13 * 16 - 28, 32, 10, hcol);
             }
         }
     }
@@ -1696,16 +2165,31 @@ static void render_game(void) {
             int sy = r * TILE_SIZE - bump_offset[r][c];
 
             if (t == '#') {
-                Uint32 c1 = (current_level == 1 || in_bonus_room) ? rgb(36, 100, 180) : rgb(200, 76, 12);
-                Uint32 c2 = (current_level == 1 || in_bonus_room) ? rgb(90, 160, 240) : rgb(252, 152, 56);
+                Uint32 c1 = (stage_num == 2 || in_bonus_room) ? rgb(36, 100, 180) :
+                            ((current_level == 4) ? rgb(195, 115, 25) : rgb(200, 76, 12));
+                Uint32 c2 = (stage_num == 2 || in_bonus_room) ? rgb(90, 160, 240) :
+                            ((current_level == 4) ? rgb(245, 190, 80) : rgb(252, 152, 56));
                 draw_rect(sx, sy, 16, 16, c1);
                 draw_rect(sx + 1, sy + 1, 6, 6, c2);
                 draw_rect(sx + 9, sy + 1, 6, 6, c2);
                 draw_rect(sx + 1, sy + 9, 6, 6, c2);
                 draw_rect(sx + 9, sy + 9, 6, 6, c2);
+            } else if (t == 'I') {
+                /* Glossy Crystal Ice Block */
+                draw_rect(sx, sy, 16, 16, rgb(40, 150, 220));
+                draw_rect(sx + 1, sy + 1, 14, 14, rgb(135, 225, 255));
+                draw_rect(sx + 2, sy + 2, 12, 3, rgb(235, 252, 255));
+                draw_rect(sx + 3, sy + 8, 4, 4, rgb(210, 245, 255));
+            } else if (t == 'J') {
+                /* Red & White Springboard / Trampoline */
+                draw_rect(sx + 1, sy, 14, 4, rgb(235, 40, 30));
+                draw_rect(sx + 3, sy + 4, 10, 3, rgb(245, 245, 245));
+                draw_rect(sx + 2, sy + 7, 12, 3, rgb(235, 40, 30));
+                draw_rect(sx + 3, sy + 10, 10, 3, rgb(245, 245, 245));
+                draw_rect(sx + 1, sy + 13, 14, 3, rgb(120, 120, 130));
             } else if (t == 'B') {
-                Uint32 c1 = (current_level == 1 || in_bonus_room) ? rgb(28, 88, 160) : rgb(180, 64, 10);
-                Uint32 c2 = (current_level == 1 || in_bonus_room) ? rgb(72, 148, 228) : rgb(228, 108, 36);
+                Uint32 c1 = (stage_num == 2 || in_bonus_room) ? rgb(28, 88, 160) : rgb(180, 64, 10);
+                Uint32 c2 = (stage_num == 2 || in_bonus_room) ? rgb(72, 148, 228) : rgb(228, 108, 36);
                 draw_rect(sx, sy, 16, 16, c1);
                 draw_rect(sx + 1, sy + 1, 6, 6, c2);
                 draw_rect(sx + 9, sy + 1, 6, 6, c2);
@@ -1720,9 +2204,9 @@ static void render_game(void) {
             } else if (t == 'U') {
                 draw_rect(sx, sy, 16, 16, rgb(110, 90, 75));
                 draw_rect(sx + 2, sy + 2, 12, 12, rgb(150, 130, 110));
-            } else if (t == 'S' || t == 'F') {
-                Uint32 c1 = (current_level == 3) ? rgb(110, 110, 120) : rgb(170, 70, 15);
-                Uint32 c2 = (current_level == 3) ? rgb(165, 165, 178) : rgb(235, 135, 65);
+            } else if (t == 'S' || (t == 'F' && r >= 4)) {
+                Uint32 c1 = (stage_num == 4) ? rgb(110, 110, 120) : rgb(170, 70, 15);
+                Uint32 c2 = (stage_num == 4) ? rgb(165, 165, 178) : rgb(235, 135, 65);
                 draw_rect(sx, sy, 16, 16, c1);
                 draw_rect(sx + 2, sy + 2, 12, 12, c2);
             } else if (t == '=') {
@@ -1748,7 +2232,7 @@ static void render_game(void) {
                 draw_rect(sx + 7, sy - 16, 2, 32, rgb(220, 220, 220));
                 Uint32 fcol = (t == 'c') ? rgb(40, 230, 60) : rgb(240, 50, 50);
                 draw_rect(sx + 9, sy - 14, 10, 8, fcol);
-            } else if (t == '|') {
+            } else if (t == '|' || (t == 'F' && r <= 3)) {
                 draw_rect(sx + 7, sy, 3, 16, rgb(180, 245, 180));
                 if (r == 2) {
                     draw_rect(sx + 5, sy, 7, 7, rgb(255, 220, 0));
@@ -1772,10 +2256,10 @@ static void render_game(void) {
         }
     }
 
-    /* Draw Rotating Firebars in 1-4 */
-    if (current_level == 3) {
+    /* Draw Rotating Firebars (row >= 4) */
+    {
         float rad = firebar_angle * 3.14159265f / 180.0f;
-        for (int r = 0; r < MAP_H; r++) {
+        for (int r = 4; r < MAP_H; r++) {
             for (int c = start_col; c <= end_col; c++) {
                 if (map[r][c] == 'F') {
                     float cx = c * TILE_SIZE + 8 - cam_x;
@@ -1806,10 +2290,18 @@ static void render_game(void) {
             int step = (frame_counter / 8) % 2;
             draw_rect(ex + (step ? 1 : 2), ey + 12, 4, 2, rgb(20, 20, 20));
             draw_rect(ex + (step ? 9 : 8), ey + 12, 4, 2, rgb(20, 20, 20));
-        } else if (e->type == ENT_TURTLE) {
+        } else if (e->type == ENT_TURTLE || e->type == ENT_FLY_TURTLE) {
+            Uint32 shell_c = (e->type == ENT_FLY_TURTLE) ? rgb(225, 45, 45) : rgb(30, 185, 50);
+            Uint32 hi_c    = (e->type == ENT_FLY_TURTLE) ? rgb(255, 150, 150) : rgb(120, 240, 110);
             draw_rect(ex + (e->dir > 0 ? 8 : 0), ey, 6, 7, rgb(255, 210, 40));
-            draw_rect(ex + 2, ey + 6, 10, 11, rgb(30, 185, 50));
-            draw_rect(ex + 4, ey + 8, 6, 7, rgb(120, 240, 110));
+            draw_rect(ex + 2, ey + 6, 10, 11, shell_c);
+            draw_rect(ex + 4, ey + 8, 6, 7, hi_c);
+            if (e->type == ENT_FLY_TURTLE) {
+                /* Flapping white feathered wings! */
+                int flap = ((frame_counter / 6) % 2) ? -3 : 1;
+                draw_rect(ex + 4, ey + 2 + flap, 7, 5, rgb(250, 250, 255));
+                draw_rect(ex + 6, ey + flap, 4, 3, rgb(220, 235, 255));
+            }
             draw_rect(ex + 2, ey + 17, 4, 3, rgb(255, 210, 40));
             draw_rect(ex + 8, ey + 17, 4, 3, rgb(255, 210, 40));
         } else if (e->type == ENT_SHELL) {
@@ -1838,16 +2330,18 @@ static void render_game(void) {
             Uint32 scol = (frame_counter % 6 < 3) ? rgb(255, 230, 20) : rgb(255, 140, 20);
             draw_rect(ex + 4, ey, 6, 14, scol);
             draw_rect(ex + 1, ey + 4, 12, 6, scol);
-        } else if (e->type == ENT_PLATFORM) {
+        } else if (e->type == ENT_PLATFORM || e->type == ENT_HPLATFORM) {
+            Uint32 pcol = (e->type == ENT_HPLATFORM) ? rgb(255, 205, 50) : rgb(180, 70, 30);
             draw_rect(ex, ey, e->w, e->h, rgb(230, 230, 240));
-            draw_rect(ex + 2, ey + 2, e->w - 4, e->h - 4, rgb(180, 70, 30));
+            draw_rect(ex + 2, ey + 2, e->w - 4, e->h - 4, pcol);
         } else if (e->type == ENT_BOSS) {
-            draw_rect(ex + 4, ey + 4, 22, 22, rgb(40, 165, 50));
+            Uint32 bbody = (world_num == 3) ? rgb(190, 30, 40) : ((world_num == 2) ? rgb(40, 150, 210) : rgb(40, 165, 50));
+            draw_rect(ex + 4, ey + 4, 22, 22, bbody);
             draw_rect(ex, ey + 2, 10, 10, rgb(220, 60, 30));
             draw_rect(ex + 2, ey, 4, 4, rgb(255, 240, 200));
-            draw_rect(ex + 10, ey + 6, 14, 14, rgb(180, 110, 30));
-            draw_rect(ex + 6, ey + 26, 6, 4, rgb(40, 165, 50));
-            draw_rect(ex + 18, ey + 26, 6, 4, rgb(40, 165, 50));
+            draw_rect(ex + 10, ey + 6, 14, 14, rgb(220, 150, 30));
+            draw_rect(ex + 6, ey + 26, 6, 4, bbody);
+            draw_rect(ex + 18, ey + 26, 6, 4, bbody);
         } else if (e->type == ENT_BOSS_FIRE) {
             draw_rect(ex, ey, 16, 6, (frame_counter % 4 < 2) ? rgb(255, 100, 10) : rgb(255, 220, 40));
         }
@@ -1883,8 +2377,8 @@ static void render_game(void) {
 
     /* Top Status HUD */
     char hud[128];
-    snprintf(hud, sizeof(hud), "LEO %06d COINS %02d WORLD 1-%d LIVES %d TIME %03d",
-             score, coins, current_level + 1, lives, level_timer);
+    snprintf(hud, sizeof(hud), "LEO %06d COINS %02d WORLD %d-%d LIVES %d TIME %03d",
+             score, coins, world_num, stage_num, lives, level_timer);
     draw_rect(0, 0, SCREEN_W, 14, rgb(15, 15, 25));
     draw_text(10, 4, hud, rgb(255, 255, 255), 1);
 
@@ -1893,12 +2387,13 @@ static void render_game(void) {
         draw_rect(36, 34, 248, 154, rgb(20, 30, 70));
         draw_rect(38, 36, 244, 150, rgb(185, 65, 20));
         draw_text(58, 48, "SUPER LEO BROS.", rgb(255, 230, 60), 2);
-        draw_text(64, 72, "CLASSIC EDITION", rgb(255, 255, 255), 1);
+        draw_text(52, 72, "3 WORLDS / 12 STAGES!", rgb(255, 255, 255), 1);
 
         char sel_buf[48];
-        snprintf(sel_buf, sizeof(sel_buf), "START WORLD:  1-%d", selected_start_level + 1);
+        snprintf(sel_buf, sizeof(sel_buf), "START WORLD:  %d-%d",
+                 (selected_start_level / 4) + 1, (selected_start_level % 4) + 1);
         draw_text(82, 98, sel_buf, rgb(120, 255, 120), 1);
-        draw_text(52, 112, "(LEFT/RIGHT TO PICK STAGE)", rgb(220, 220, 220), 1);
+        draw_text(52, 112, "(LEFT/RIGHT TO PICK 1-1..3-4)", rgb(220, 220, 220), 1);
 
         draw_text(50, 134, "ARROWS: MOVE    SPACE/X: JUMP", rgb(255, 255, 255), 1);
         draw_text(50, 146, "Z/SHIFT: RUN & FIREBALLS", rgb(255, 255, 255), 1);
@@ -1912,7 +2407,7 @@ static void render_game(void) {
         draw_rect(40, 50, 240, 120, rgb(20, 80, 30));
         draw_rect(42, 52, 236, 116, rgb(30, 130, 50));
         draw_text(56, 68, "CONGRATULATIONS!", rgb(255, 235, 50), 2);
-        draw_text(58, 98, "LEO SAVED THE KINGDOM!", rgb(255, 255, 255), 1);
+        draw_text(52, 98, "ALL 3 WORLDS CONQUERED!", rgb(255, 255, 255), 1);
         draw_text(54, 122, "PRESS ENTER TO PLAY AGAIN", rgb(200, 255, 200), 1);
         draw_text(68, 138, "PRESS ESC TO EXIT", rgb(220, 220, 220), 1);
     }
