@@ -1019,7 +1019,7 @@
       let actionTouch = null;
 
       gestureTouches.forEach((t) => {
-        const dx = t.curX - t.startX;
+        let dx = t.curX - t.startX;
         const dy = t.curY - t.startY;
 
         // Allow a single finger to become a movement stick only if dragged horizontally (and stronger threshold if Tilt is ON)
@@ -1030,17 +1030,33 @@
 
         if (t.role === 'move') {
           moveTouch = t;
-          if (dx < -8) {
+          // Dynamic floating thumbstick leash: base follows thumb within 28px so reversing direction is instant!
+          const maxLeash = 28;
+          if (dx < -maxLeash) {
+            t.startX = t.curX + maxLeash;
+            dx = -maxLeash;
+          } else if (dx > maxLeash) {
+            t.startX = t.curX - maxLeash;
+            dx = maxLeash;
+          }
+          if (Math.abs(dx) > 5) {
+            t.hasDragged = true;
+          }
+
+          if (dx < -5) {
             nextKeys.add(1); // Left
-          } else if (dx > 8) {
+          } else if (dx > 5) {
             nextKeys.add(2); // Right
-          } else if (t.relStartX < 0.24) {
-            nextKeys.add(1); // Tap far-left = Left
-          } else {
-            nextKeys.add(2); // Tap mid-left = Right
+          } else if (!t.hasDragged) {
+            // Only use tap-zone direction before the user starts sliding their thumb
+            if (t.relStartX < 0.22) {
+              nextKeys.add(1); // Tap far-left = Left
+            } else if (t.relStartX > 0.28) {
+              nextKeys.add(2); // Tap mid-left = Right
+            }
           }
           // Auto-sprint when sliding further horizontally
-          if (Math.abs(dx) > 24) {
+          if (Math.abs(dx) > 18) {
             nextKeys.add(6); // Sprint / Fire
           }
           // 1-Thumb vertical flicks: Slide UP to Jump, Slide DOWN to Crouch/Enter Pipe
